@@ -46,7 +46,7 @@
     <div class="container">
 
       <div class="blog-header">
-        <h1 class="blog-title">The "Naming Things is Hard" Blog</h1>
+        <h1 class="blog-title">A Programmer's Ramblings</h1>
         <p class="lead blog-description">I just want to talk about programming.</p>
       </div>
 
@@ -55,62 +55,88 @@
         <div class="col-sm-8 blog-main">
 
           <div class="blog-post">
-            <h2 class="blog-post-title">The C calling convention</h2>
-            <p class="blog-post-meta">March 31, 2017 by <a href="#">Don</a></p>
+            <h2 class="blog-post-title">Calling C Standard Library functions from assembly</h2>
+            <p class="blog-post-meta">April 1st, 2017 by <a href="#">Don</a></p>
 
-            <p>This blog post will be about calling C standard library functions in assembly language, specifically printf and scanf.</p>
+            <p>I recently began delving into x86 assembly language using MASM and VS2015 for a Computer Organization class. In this class, all I/O is done using the basic procedures provided by the textbook author's <a href="http://kipirvine.com/asm/">library</a>. This is really quite limiting, so let's look at calling some C Standard Library functions from assembly.</p>
             <hr>
-            <p>Cum sociis natoque penatibus et magnis <a href="#">dis parturient montes</a>, nascetur ridiculus mus. Aenean eu leo quam. Pellentesque ornare sem lacinia quam venenatis vestibulum. Sed posuere consectetur est at lobortis. Cras mattis consectetur purus sit amet fermentum.</p>
+            <p>This post assumes at least some familiarity with x86 assembly language. Source and VS2015 project files are available <a href="https://github.com/donfreiday/printf">on my GitHub</a>.</p>
+            <p>Microsoft changed the C runtime and libraries in VS2015, so I had to reference <a href="http://stackoverflow.com/questions/33721059/call-c-standard-library-function-from-asm-in-visual-studio">this thread</a> on StackOverflow detailing which libraries to include.
             <blockquote>
-              <p>Curabitur blandit tempus porttitor. <strong>Nullam quis risus eget urna mollis</strong> ornare vel eu leo. Nullam id dolor id nibh ultricies vehicula ut id elit.</p>
+              <p>
+                <ul>
+                  <li>You'll need to add these libraries to your dependencies: <strong>libcmt.lib, libvcruntime.lib, libucrt.lib, legacy_stdio_definitions.lib</strong>. Alternatively you could use includelib to include these libraries in your assembly file.</li>
+                  <li>Specify C calling convention for your main procedure using PROC C</li>
+                </ul>
+              </p>
             </blockquote>
-            <p>Etiam porta <em>sem malesuada magna</em> mollis euismod. Cras mattis consectetur purus sit amet fermentum. Aenean lacinia bibendum nulla sed consectetur.</p>
-            <h2>Heading</h2>
-            <p>Vivamus sagittis lacus vel augue laoreet rutrum faucibus dolor auctor. Duis mollis, est non commodo luctus, nisi erat porttitor ligula, eget lacinia odio sem nec elit. Morbi leo risus, porta ac consectetur ac, vestibulum at eros.</p>
-            <h3>Sub-heading</h3>
-            <p>Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus.</p>
-            <pre><code>Example code block</code></pre>
-            <p>Aenean lacinia bibendum nulla sed consectetur. Etiam porta sem malesuada magna mollis euismod. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa.</p>
-            <h3>Sub-heading</h3>
-            <p>Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Aenean lacinia bibendum nulla sed consectetur. Etiam porta sem malesuada magna mollis euismod. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus.</p>
-            <ul>
-              <li>Praesent commodo cursus magna, vel scelerisque nisl consectetur et.</li>
-              <li>Donec id elit non mi porta gravida at eget metus.</li>
-              <li>Nulla vitae elit libero, a pharetra augue.</li>
-            </ul>
-            <p>Donec ullamcorper nulla non metus auctor fringilla. Nulla vitae elit libero, a pharetra augue.</p>
-            <ol>
-              <li>Vestibulum id ligula porta felis euismod semper.</li>
-              <li>Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus.</li>
-              <li>Maecenas sed diam eget risus varius blandit sit amet non magna.</li>
-            </ol>
-            <p>Cras mattis consectetur purus sit amet fermentum. Sed posuere consectetur est at lobortis.</p>
-          </div><!-- /.blog-post -->
+            <h2>Let's get started!</h2>
+            <p>I'm going to provide in-depth explanations of most code, for my benefit as much as the reader's.</p>
+            <hr>
+            <h3>Setting up</h3>
+            <p>First, we need to tell the assembler our target architecture (386), our memory model (protected mode), and our calling convention (Microsoft stdcall, which we'll override later). We'll also need to include our libraries.
+            <pre><code>.386
+.model flat, stdcall
 
-          <div class="blog-post">
-            <h2 class="blog-post-title">Another blog post</h2>
-            <p class="blog-post-meta">December 23, 2013 by <a href="#">Jacob</a></p>
+includelib libcmt.lib
+includelib libvcruntime.lib
+includelib libucrt.lib
+includelib legacy_stdio_definitions.lib</code></pre>
+            Here we tell the linker to look for our external functions, and set up a few variables in our .data segment:
+            <pre><code>extern printf:NEAR
+extern scanf:NEAR
 
-            <p>Cum sociis natoque penatibus et magnis <a href="#">dis parturient montes</a>, nascetur ridiculus mus. Aenean eu leo quam. Pellentesque ornare sem lacinia quam venenatis vestibulum. Sed posuere consectetur est at lobortis. Cras mattis consectetur purus sit amet fermentum.</p>
-            <blockquote>
-              <p>Curabitur blandit tempus porttitor. <strong>Nullam quis risus eget urna mollis</strong> ornare vel eu leo. Nullam id dolor id nibh ultricies vehicula ut id elit.</p>
-            </blockquote>
-            <p>Etiam porta <em>sem malesuada magna</em> mollis euismod. Cras mattis consectetur purus sit amet fermentum. Aenean lacinia bibendum nulla sed consectetur.</p>
-            <p>Vivamus sagittis lacus vel augue laoreet rutrum faucibus dolor auctor. Duis mollis, est non commodo luctus, nisi erat porttitor ligula, eget lacinia odio sem nec elit. Morbi leo risus, porta ac consectetur ac, vestibulum at eros.</p>
-          </div><!-- /.blog-post -->
+.data
+prompt BYTE "Enter an integer: ",0;
+input_format BYTE "%d",0
+text BYTE "You entered: %d", 0
+integer DWORD ?
+</code></pre>
+            <hr>
+            <h3>Calling conventions</h3>
+            <p>The calling convention determines how procedures are called, specifically:
+                <ul>
+                  <li>The order of and method by which arguments are passed: registers, the runtime stack, or memory.</li>
+                  <li>The registers that need to be preserved by called procedures.</li>
+                  <li>How the stack pointer is restored after the call (is it the called or calling procedure's responsibility?)</li>
+                  <li>How return values are handled.</li>
+              </ul>
+            </p>
 
-          <div class="blog-post">
-            <h2 class="blog-post-title">New feature</h2>
-            <p class="blog-post-meta">December 14, 2013 by <a href="#">Chris</a></p>
-
-            <p>Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Aenean lacinia bibendum nulla sed consectetur. Etiam porta sem malesuada magna mollis euismod. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus.</p>
-            <ul>
-              <li>Praesent commodo cursus magna, vel scelerisque nisl consectetur et.</li>
-              <li>Donec id elit non mi porta gravida at eget metus.</li>
-              <li>Nulla vitae elit libero, a pharetra augue.</li>
-            </ul>
-            <p>Etiam porta <em>sem malesuada magna</em> mollis euismod. Cras mattis consectetur purus sit amet fermentum. Aenean lacinia bibendum nulla sed consectetur.</p>
-            <p>Donec ullamcorper nulla non metus auctor fringilla. Nulla vitae elit libero, a pharetra augue.</p>
+            <p>We'll be using the C calling convention.
+            <pre><code>.code
+main PROC C                    ; Specify "C" calling convention</code></pre>
+              This means we'll pass our arguments on the stack in reverse order. Registers EAX, ECX, and EDX are caller-saved, the rest are callee-saved, and we'll place our return value in the EAX register. Our calling procedure will clean up the stack by adjusting the stack pointer (ESP) after the callee returns.</p>
+              <hr>
+              <h3>Calling printf</h3>
+              <p>Sounds like a lot of work, right? It's not actually that bad. Here's how to call printf:
+                <ol>
+                  <li>Push the memory address of a null terminated string onto the stack.</li>
+                  <li>Call printf.</li>
+                  <li>Adjust the stack pointer by four bytes to remove the DWORD argument.</li>
+                </ol>
+                <pre><code>push offset prompt
+call printf
+add esp,4</code></pre>
+              </p>
+              <hr>
+              <h3>Calling scanf</h3>
+              <p>So now that we have 'Hello world' written in assembly, let's try calling scanf. Remember that arguments go on the stack in reverse order, so we push the address of our destination variable, then the format string for scanf.
+                <pre><code>push offset integer
+push offset input_format
+call scanf
+add esp,8</code></pre>
+              Note that 8 bytes were added to the stack pointer to remove our two DWORD arguments. Let's display the variable we read:
+            <pre><code>push integer
+push offset text
+call printf
+add esp,8</code></pre></p>
+          <hr>
+          <h3>Finishing up</h3>
+          <p>We finish by exiting main cleanly with the equivalent of <code>return 0;</code>. Remember that C calling convention has us return values in EAX:
+            <pre><code>mov eax,0
+ret</code></pre>
+            And that's it!</p>
           </div><!-- /.blog-post -->
 
           <nav>
