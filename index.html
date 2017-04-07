@@ -75,7 +75,7 @@
             <hr>
             <h3>Setting up</h3>
             <p>First, we need to tell the assembler our target architecture (386), our memory model (protected mode), and our calling convention (Microsoft stdcall, which we'll override later). We'll also need to include our libraries.
-            <pre class="prettyprint"><code>.386
+            <pre><code>.386
 .model flat, stdcall
 
 includelib libcmt.lib
@@ -83,7 +83,7 @@ includelib libvcruntime.lib
 includelib libucrt.lib
 includelib legacy_stdio_definitions.lib</code></pre>
             Here we tell the linker to look for our external functions, and set up a few variables in our .data segment:
-            <pre class="prettyprint"><code>extern printf:NEAR
+            <pre><code>extern printf:NEAR
 extern scanf:NEAR
 
 .data
@@ -104,7 +104,7 @@ integer DWORD ?
             </p>
 
             <p>We'll be using the C calling convention.
-            <pre class="prettyprint"><code>.code
+            <pre><code>.code
 main PROC C                    ; Specify "C" calling convention</code></pre>
               This means we'll pass our arguments on the stack in reverse order. Registers EAX, ECX, and EDX are caller-saved, the rest are callee-saved, and we'll place our return value in the EAX register. Our calling procedure will clean up the stack by adjusting the stack pointer (ESP) after the callee returns.</p>
               <hr>
@@ -115,26 +115,26 @@ main PROC C                    ; Specify "C" calling convention</code></pre>
                   <li>Call printf.</li>
                   <li>Adjust the stack pointer by four bytes to remove the DWORD argument.</li>
                 </ol>
-                <pre class="prettyprint"><code>push offset prompt
+                <pre><code>push offset prompt
 call printf
 add esp,4</code></pre>
               </p>
               <hr>
               <h3>Calling scanf</h3>
               <p>So now that we have 'Hello world' written in assembly, let's try calling scanf. Remember that arguments go on the stack in reverse order, so we push the address of our destination variable, then the format string for scanf.
-                <pre class="prettyprint"><code>push offset integer
+                <pre><code>push offset integer
 push offset input_format
 call scanf
 add esp,8</code></pre>
               Note that 8 bytes were added to the stack pointer to remove our two DWORD arguments. Let's display the variable we read:
-            <pre class="prettyprint"><code>push integer
+            <pre><code>push integer
 push offset text
 call printf
 add esp,8</code></pre></p>
           <hr>
           <h3>Finishing up</h3>
           <p>We finish by exiting main cleanly with the equivalent of <code>return 0;</code>. Remember that C calling convention has us return values in EAX:
-            <pre class="prettyprint"><code>mov eax,0
+            <pre><code>mov eax,0
 ret</code></pre>
             And that's it!</p>
           </div><!-- /.blog-post -->
